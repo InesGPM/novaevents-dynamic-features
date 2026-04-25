@@ -86,4 +86,39 @@ class TestEventService {
         `when`(eventRepo.findById(42L)).thenReturn(Optional.empty())
         assertThrows(NoSuchElementException::class.java) { service.delete(42L) }
     }
+    @Test
+    fun `create throws when event type missing`() {
+        val club = Club(id = 1, name = "Chess Club")
+        val owner = User(id = 1, username = "alice", password = "x")
+
+        `when`(eventRepo.existsByNameIgnoreCase("Tournament")).thenReturn(false)
+        `when`(clubRepo.findById(1L)).thenReturn(Optional.of(club))
+        `when`(typeRepo.findById(99L)).thenReturn(Optional.empty())
+
+        assertThrows(NoSuchElementException::class.java) {
+            service.create(1, "Tournament", LocalDate.now(), "Room A", 99, null, owner)
+        }
+    }
+
+    @Test
+    fun `getById returns event when found`() {
+        val event = Event(id = 10, name = "Talk")
+
+        `when`(eventRepo.findById(10L)).thenReturn(Optional.of(event))
+
+        val result = service.getById(10L)
+
+        assertEquals("Talk", result.name)
+    }
+
+    @Test
+    fun `delete removes existing event`() {
+        val event = Event(id = 7, name = "Old Event")
+
+        `when`(eventRepo.findById(7L)).thenReturn(Optional.of(event))
+
+        service.delete(7L)
+
+        verify(eventRepo).delete(event)
+    }
 }
