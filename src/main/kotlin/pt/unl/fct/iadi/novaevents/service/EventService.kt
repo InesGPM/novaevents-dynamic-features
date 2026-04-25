@@ -29,7 +29,10 @@ class EventService (val clubRepository: ClubRepository, val eventRepository: Eve
         }
         val club = clubRepository.findById(clubId)
             .orElseThrow { NoSuchElementException("Club not found: $clubId") }
-        val eventType = eventTypeRepository.findById(typeId)
+        if (club.name == "Hiking & Outdoors Club" && location.isNullOrBlank()) {
+            throw IllegalArgumentException("Location is required for outdoor events")
+        }
+            val eventType = eventTypeRepository.findById(typeId)
             .orElseThrow { NoSuchElementException("EventType not found") }
         return eventRepository.save(Event(club = club, name = name, date = date,
             location = location, type = eventType, description = description, owner=owner))

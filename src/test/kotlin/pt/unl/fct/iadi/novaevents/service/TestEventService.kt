@@ -121,4 +121,20 @@ class TestEventService {
 
         verify(eventRepo).delete(event)
     }
+    @Test
+    fun `outdoor event without location throws`() {
+        val club = Club(id = 1, name = "Hiking & Outdoors Club")
+        val type = EventType(id = 1, name = "Hike")
+        val owner = User(id = 1, username = "alice", password = "x")
+
+        `when`(eventRepo.existsByNameIgnoreCase("Hike Event")).thenReturn(false)
+        `when`(clubRepo.findById(1L)).thenReturn(Optional.of(club))
+        `when`(typeRepo.findById(1L)).thenReturn(Optional.of(type))
+
+        val ex = assertThrows(IllegalArgumentException::class.java) {
+            service.create(1, "Hike Event", LocalDate.now(), null, 1, null, owner)
+        }
+
+        assertTrue(ex.message!!.contains("Location is required"))
+    }
 }
