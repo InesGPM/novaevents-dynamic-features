@@ -13,6 +13,11 @@
             <form th:action="@{/clubs/{clubId}/events(clubId=${club.id})}"
                   th:object="${form}" method="post">
 
+                <input type="hidden"
+                       th:if="${_csrf}"
+                       th:name="${_csrf.parameterName}"
+                       th:value="${_csrf.token}"/>
+
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Name *</label>
                     <input type="text" class="form-control" th:field="*{name}"
@@ -41,8 +46,38 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Location</label>
-                    <input type="text" class="form-control" th:field="*{location}">
+                    <label class="form-label fw-semibold">
+                        Location <span th:if="${isOutdoorClub}">*</span>
+                    </label>
+                    <input type="text" class="form-control" id="location"
+                           th:field="*{location}"
+                           th:classappend="${#fields.hasErrors('location')} ? 'is-invalid'">
+                    <div class="invalid-feedback" th:errors="*{location}"></div>
+
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm"
+                                onclick="checkWeatherJs()">
+                            Check Weather JS
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm"
+                                hx-get="/api/weather"
+                                hx-include="[name='location']"
+                                hx-target="#weather-result"
+                                hx-swap="innerHTML">
+                            Check Weather HTMX
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-sm"
+                                onclick="clearWeather()">
+                            Clear
+                        </button>
+
+                        <span id="weather-result"></span>
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -58,5 +93,36 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script>
+    function checkWeatherJs() {
+        const location = document.getElementById('location').value;
+        const target = document.getElementById('weather-result');
+        if (!location) {
+            target.innerHTML = '<span class="text-secondary">Enter a location first.</span>';
+            return;
+        }
+        fetch('/api/weather?location=' + encodeURIComponent(location), {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.raining === true) {
+                target.innerHTML = '<span class="badge bg-warning text-dark">Raining</span>';
+            } else if (data.raining === false) {
+                target.innerHTML = '<span class="badge bg-success">Clear</span>';
+            } else {
+                target.innerHTML = '<span class="text-secondary">Weather data unavailable.</span>';
+            }
+        })
+        .catch(() => {
+            target.innerHTML = '<span class="text-secondary">Weather data unavailable.</span>';
+        });
+    }
+
+    function clearWeather() {
+        document.getElementById('weather-result').innerHTML = '';
+    }
+</script>
 </body>
 </html>

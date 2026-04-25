@@ -10,9 +10,10 @@ import pt.unl.fct.iadi.novaevents.controller.dto.EventFormDto
 import pt.unl.fct.iadi.novaevents.service.ClubService
 import pt.unl.fct.iadi.novaevents.service.EventService
 import pt.unl.fct.iadi.novaevents.repository.UserRepository
+import pt.unl.fct.iadi.novaevents.service.WeatherService
 
 @Controller
-class EventController(val eventService: EventService, val clubService: ClubService, val userRepository: UserRepository ) {
+class EventController(val eventService: EventService, val clubService: ClubService, val userRepository: UserRepository, val weatherService: WeatherService) {
 
     @GetMapping("/events")
     fun listEvents(
@@ -43,9 +44,11 @@ class EventController(val eventService: EventService, val clubService: ClubServi
 
     @GetMapping("/clubs/{clubId}/events/new")
     fun showCreateForm(@PathVariable clubId: Long, model: Model): String {
-        model.addAttribute("club", clubService.getById(clubId))
+        val club = clubService.getById(clubId)
+        model.addAttribute("club", club)
         model.addAttribute("form", EventFormDto())
         model.addAttribute("eventTypes", eventService.getAllTypes())
+        model.addAttribute("isOutdoorClub", club.name == "Hiking & Outdoors Club")
         return "events/new"
     }
 
@@ -58,18 +61,40 @@ class EventController(val eventService: EventService, val clubService: ClubServi
         authentication: org.springframework.security.core.Authentication
     ): String {
 
-        val resolvedTypeId = form.typeId
-            ?: form.type?.let { typeName ->
-                eventService.getAllTypes().find { it.name == typeName }?.id
+        val resolvedTypeId = form.typeId ?: form.type?.let { 
+                typeName -> eventService.getAllTypes().find { it.name == typeName }?.id
             }
 
         if (resolvedTypeId == null) {
             bindingResult.rejectValue("typeId", "required", "Event type is required")
         }
 
+        // --- Regras específicas do Hiking & Outdoors Club ---
+        val club = clubService.getById(clubId)
+        val isOutdoorClub = club.name == "Hiking & Outdoors Club"
+
+        if (isOutdoorClub) {
+            // Localização é obrigatória
+            if (form.location.isNullOrBlank()) {
+                bindingResult.rejectValue("location", "required", "Location is required for outdoor events")
+            } else {
+                // Não pode criar com chuva
+                val raining = weatherService.isRaining(form.location)
+                if (raining == true) {
+                    bindingResult.rejectValue(
+                        "location",
+                        "weather",
+                        "It is currently raining at \"${form.location}\" — outdoor events cannot be created in bad weather"
+                    )
+                }
+            }
+        }
+        // ---------------------------------------------------
+
         if (bindingResult.hasErrors()) {
-            model.addAttribute("club", clubService.getById(clubId))
+            model.addAttribute("club", club)
             model.addAttribute("eventTypes", eventService.getAllTypes())
+            model.addAttribute("isOutdoorClub", isOutdoorClub)
             return "events/new"
         }
 

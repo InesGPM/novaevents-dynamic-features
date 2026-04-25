@@ -3,12 +3,16 @@ package pt.unl.fct.iadi.novaevents.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.http.HttpStatus
 import pt.unl.fct.iadi.novaevents.security.JwtAuthenticationFilter
 import pt.unl.fct.iadi.novaevents.security.JwtLoginSuccessHandler
 
@@ -19,8 +23,32 @@ open class SecurityConfig(
     private val jwtLoginSuccessHandler: JwtLoginSuccessHandler
 ) {
 
+    // ==================== API SECURITY CHAIN ====================
     @Bean
-    open fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    @Order(1)
+    open fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        http
+            .securityMatcher("/api/**")
+            .csrf { it.disable() }
+            .sessionManagement {
+                it.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            }
+            .authorizeHttpRequests {
+                it.anyRequest().authenticated()
+            }
+            .exceptionHandling {
+                // devolve 401 em vez de redirecionar para /login
+                it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+            }
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+
+        return http.build()
+    }
+
+    // ==================== WEB SECURITY CHAIN ====================
+    @Bean
+    @Order(2)
+    open fun webSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .csrf {
                 it.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -30,7 +58,7 @@ open class SecurityConfig(
             }
             .authorizeHttpRequests {
                 it
-                    .requestMatchers("/", "/login", "/login/**").permitAll()   // <- importante
+                    .requestMatchers("/", "/login", "/login/**").permitAll()
                     .requestMatchers("/clubs", "/clubs/*").permitAll()
                     .requestMatchers("/events", "/events/*").permitAll()
                     .requestMatchers("/clubs/*/events/new").hasAnyRole("EDITOR", "ADMIN")
