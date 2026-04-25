@@ -83,4 +83,19 @@ class TestWeatherController {
         mockMvc.perform(get("/api/weather?location=rainy").accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isUnauthorized)
     }
+    @Test
+    @WithMockUser(username = "alice")
+    fun `html fragment clear`() {
+        mockMvc.perform(get("/api/weather?location=sunny").accept(MediaType.TEXT_HTML))
+            .andExpect(status().isOk)
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Clear")))
+    }
+
+    @Test
+    @WithMockUser(username = "alice")
+    fun `html fragment unavailable`() {
+        mockMvc.perform(get("/api/weather?location=unknown").accept(MediaType.TEXT_HTML))
+            .andExpect(status().isOk)
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Weather data unavailable")))
+    }
 }
