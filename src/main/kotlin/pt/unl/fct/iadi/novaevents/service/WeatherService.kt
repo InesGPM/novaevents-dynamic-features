@@ -8,7 +8,7 @@ import pt.unl.fct.iadi.novaevents.client.WeatherClient
 @Service
 class WeatherService(
     private val weatherClient: WeatherClient,
-    @Value("\${weather.api.key}") private val apiKey: String
+    @Value("\${weather.api.key:dummy-key}") private val apiKey: String
 ) {
 
     private val log = LoggerFactory.getLogger(WeatherService::class.java)

@@ -13,7 +13,7 @@ class WeatherClientConfig {
     @Bean
     fun weatherClient(
         builder: RestClient.Builder,
-        @Value("\${weather.api.url}") baseUrl: String
+        @Value("\${weather.api.url:https://api.openweathermap.org/data/2.5}") baseUrl: String
     ): WeatherClient {
         val restClient = builder
             .baseUrl(baseUrl)
