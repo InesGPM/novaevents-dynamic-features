@@ -12,6 +12,8 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.security.web.access.AccessDeniedHandlerImpl
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import pt.unl.fct.iadi.novaevents.security.JwtAuthenticationFilter
 import pt.unl.fct.iadi.novaevents.security.JwtLoginSuccessHandler
@@ -64,7 +66,14 @@ open class SecurityConfig(
                     .requestMatchers("/clubs/*/events/new").hasAnyRole("EDITOR", "ADMIN")
                     .requestMatchers("/clubs/*/events/*/edit").hasAnyRole("EDITOR", "ADMIN")
                     .requestMatchers("/clubs/*/events/*/delete").hasRole("ADMIN")
+                    // Página de detalhe de evento é pública (GET); modificações ficam para baixo.
+                    .requestMatchers(HttpMethod.GET, "/clubs/*/events/*").permitAll()
                     .anyRequest().authenticated()
+            }
+            .exceptionHandling {
+                // Garante que utilizadores autenticados sem permissão recebem 403
+                // (em vez de redirecionar para /login).
+                it.accessDeniedHandler(AccessDeniedHandlerImpl())
             }
             .formLogin {
                 it
